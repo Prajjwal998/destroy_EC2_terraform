@@ -72,9 +72,10 @@ pipeline {
         }
     }
 
-    def getInstanceId() {
-        script {
-            return sh "aws ec2 describe-instances --region ${AWS_REGION} --filters Name=tag:Name,Values=${INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text".trim()
-        }
+def getInstanceId() {
+    script {
+        return sh(script: "aws ec2 describe-instances --region ${AWS_REGION} --filters Name=tag:Name,Values=${INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
     }
+}
+
 }
