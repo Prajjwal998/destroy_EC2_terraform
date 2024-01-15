@@ -9,7 +9,7 @@ pipeline {
        
     }
 
-    stages {
+     stages {
         stage('Choose EC2 Action') {
             steps {
                 script {
@@ -73,6 +73,8 @@ pipeline {
     }
 
     def getInstanceId() {
-        sh "aws ec2 describe-instances --region ${AWS_REGION} --filters Name=tag:Name,Values=${INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text".trim()
+        script {
+            return sh "aws ec2 describe-instances --region ${AWS_REGION} --filters Name=tag:Name,Values=${INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text".trim()
+        }
     }
 }
