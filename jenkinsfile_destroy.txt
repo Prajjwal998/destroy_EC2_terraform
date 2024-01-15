@@ -1,0 +1,30 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'us-east-1' 
+        INSTANCE_NAME = 'Terraform-Instance'  
+    }
+
+    stages {
+        stage('Terraform Init') {
+            steps {
+                script {
+                    sh 'terraform init'
+                }
+            }
+        }
+
+        stage('Terraform Destroy') {
+            steps {
+                script {
+                    // get the instance ID based on the name
+                    def instanceId = sh(script: "aws ec2 describe-instances --filters Name=tag:Name,Values=${env.INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
+
+                    // terraform destroy with instance ID
+                    sh "terraform destroy -target=aws_instance.example -var 'instance_id=${instanceId}' -auto-approve"
+                }
+            }
+        }
+    }
+}
