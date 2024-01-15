@@ -25,7 +25,7 @@ pipeline {
                     echo "Instance ID: ${instanceId}"
 
                     // terraform destroy with instance ID
-                    sh "terraform destroy -target=aws_instance.example -var 'instance_id=${instanceId}' -auto-approve"
+                    sh "terraform destroy -var instance_id=${instanceId} -auto-approve"
                 }
             }
         }
