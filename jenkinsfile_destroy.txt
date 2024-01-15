@@ -1,33 +1,75 @@
-pipeline {
-    agent any
+node {
+    stage('Choose EC2 Action') {
+        script {
+            def userChoice = input(
+                id: 'userChoice', 
+                message: 'Choose an action for EC2 instance:',
+                parameters: [choice(choices: 'Stop\nStart\nTerminate', description: 'Select an action', name: 'Action')]
+            )
 
-    environment {
-        AWS_REGION = 'ap-south-1' 
-        INSTANCE_NAME = 'Terraform-Instance'
-        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
-        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+            // Execute the selected stage based on user choice
+            switch (userChoice) {
+                case 'Stop':
+                    echo "Stopping EC2 Instance"
+                    stopEC2Instance()
+                    break
+                case 'Start':
+                    echo "Starting EC2 Instance"
+                    startEC2Instance()
+                    break
+                case 'Terminate':
+                    echo "Terminating EC2 Instance"
+                    terminateEC2Instance()
+                    break
+                default:
+                    echo "Invalid choice: ${userChoice}"
+                    currentBuild.result = 'FAILURE'
+            }
+        }
     }
+}
 
-    stages {
-        stage('Terraform Init') {
-            steps {
-                script {
-                    sh 'terraform init'
-                }
-            }
-        }
+def stopEC2Instance() {
+    // Your existing stop EC2 instance steps go here
+    script {
+        // Get the instance ID based on the name
+        def instanceId = sh(script: "aws ec2 describe-instances --region ${env.AWS_REGION} --filters Name=tag:Name,Values=${env.INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
+        echo "Instance ID: ${instanceId}"
 
-        stage('Terraform Destroy') {
-            steps {
-                script {
-                    // get the instance ID based on the name
-                    def instanceId = sh(script: "aws ec2 describe-instances --region ${env.AWS_REGION} --filters Name=tag:Name,Values=${env.INSTANCE_NAME} --query         'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
-                    echo "Instance ID: ${instanceId}"
+        // Stop the EC2 instance
+        sh "aws ec2 stop-instances --region ${env.AWS_REGION} --instance-ids ${instanceId}"
 
-                    // terraform destroy with instance ID
-                    sh "terraform destroy -var instance_id=${instanceId} -auto-approve"
-                }
-            }
-        }
+        // Wait for the instance to be stopped (optional)
+        sh "aws ec2 wait instance-stopped --region ${env.AWS_REGION} --instance-ids ${instanceId}"
+    }
+}
+
+def terminateEC2Instance() {
+    // Your existing terminate EC2 instance steps go here
+    script {
+        // Get the instance ID based on the name
+        def instanceId = sh(script: "aws ec2 describe-instances --region ${env.AWS_REGION} --filters Name=tag:Name,Values=${env.INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
+        echo "Instance ID: ${instanceId}"
+
+        // Terminate the EC2 instance
+        sh "aws ec2 terminate-instances --region ${env.AWS_REGION} --instance-ids ${instanceId}"
+
+        // Wait for the instance to be terminated (optional)
+        sh "aws ec2 wait instance-terminated --region ${env.AWS_REGION} --instance-ids ${instanceId}"
+    }
+}
+
+def startEC2Instance() {
+    // Your existing start EC2 instance steps go here
+    script {
+        // Get the instance ID based on the name
+        def instanceId = sh(script: "aws ec2 describe-instances --region ${env.AWS_REGION} --filters Name=tag:Name,Values=${env.INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
+        echo "Instance ID: ${instanceId}"
+
+        // Start the EC2 instance
+        sh "aws ec2 start-instances --region ${env.AWS_REGION} --instance-ids ${instanceId}"
+
+        // Wait for the instance to be running (optional)
+        sh "aws ec2 wait instance-running --region ${env.AWS_REGION} --instance-ids ${instanceId}"
     }
 }
