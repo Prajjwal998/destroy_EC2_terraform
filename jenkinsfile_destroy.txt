@@ -6,76 +6,23 @@ pipeline {
         INSTANCE_NAME = 'Terraform-Instance'
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-       
     }
 
-     stages {
-        stage('Choose EC2 Action') {
+    stages {
+        stage('Stop EC2 Instance') {
             steps {
                 script {
-                    def userChoice = input(
-                        id: 'userChoice', 
-                        message: 'Choose an action for EC2 instance:',
-                        parameters: [choice(choices: 'Stop\nStart\nTerminate', description: 'Select an action', name: 'Action')]
-                    )
+                    // Get the instance ID based on the name
+                    def instanceId = sh(script: "aws ec2 describe-instances --region ${env.AWS_REGION} --filters Name=tag:Name,Values=${env.INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
+                    echo "Instance ID: ${instanceId}"
 
-                    // Execute the selected stage based on user choice
-                    switch (userChoice) {
-                        case 'Stop':
-                            echo "Stopping EC2 Instance"
-                            stopEC2Instance()
-                            break
-                        case 'Start':
-                            echo "Starting EC2 Instance"
-                            startEC2Instance()
-                            break
-                        case 'Terminate':
-                            echo "Terminating EC2 Instance"
-                            terminateEC2Instance()
-                            break
-                        default:
-                            echo "Invalid choice: ${userChoice}"
-                            currentBuild.result = 'FAILURE'
-                    }
+                    // Stop the EC2 instance
+                    sh "aws ec2 stop-instances --region ${env.AWS_REGION} --instance-ids ${instanceId}"
+
+                    // Wait for the instance to be stopped (optional)
+                    sh "aws ec2 wait instance-stopped --region ${env.AWS_REGION} --instance-ids ${instanceId}"
                 }
             }
         }
-    }
-
-    def stopEC2Instance() {
-        script {
-            def instanceId = getInstanceId()
-            echo "Instance ID: ${instanceId}"
-
-            sh "aws ec2 stop-instances --region ${AWS_REGION} --instance-ids ${instanceId}"
-            sh "aws ec2 wait instance-stopped --region ${AWS_REGION} --instance-ids ${instanceId}"
-        }
-    }
-
-    def terminateEC2Instance() {
-        script {
-            def instanceId = getInstanceId()
-            echo "Instance ID: ${instanceId}"
-
-            sh "aws ec2 terminate-instances --region ${AWS_REGION} --instance-ids ${instanceId}"
-            sh "aws ec2 wait instance-terminated --region ${AWS_REGION} --instance-ids ${instanceId}"
-        }
-    }
-
-    def startEC2Instance() {
-        script {
-            def instanceId = getInstanceId()
-            echo "Instance ID: ${instanceId}"
-
-            sh "aws ec2 start-instances --region ${AWS_REGION} --instance-ids ${instanceId}"
-            sh "aws ec2 wait instance-running --region ${AWS_REGION} --instance-ids ${instanceId}"
-        }
-    }
-
-def getInstanceId() {
-    script {
-        return sh(script: "aws ec2 describe-instances --region ${AWS_REGION} --filters Name=tag:Name,Values=${INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
-    }
 }
-
 }
