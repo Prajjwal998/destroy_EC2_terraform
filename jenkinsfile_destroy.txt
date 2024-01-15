@@ -3,7 +3,9 @@ pipeline {
 
     environment {
         AWS_REGION = 'ap-south-1' 
-        INSTANCE_NAME = 'Terraform-Instance'  
+        INSTANCE_NAME = 'Terraform-Instance'
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
     }
 
     stages {
@@ -19,7 +21,7 @@ pipeline {
             steps {
                 script {
                     // get the instance ID based on the name
-                    def instanceId = sh(script: "aws ec2 describe-instances --filters Name=tag:Name,Values=${env.INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
+                    def instanceId = sh(script: "aws ec2 describe-instances --region ${env.AWS_REGION} --access-key ${env.AWS_ACCESS_KEY_ID} --secret-key ${env.AWS_SECRET_ACCESS_KEY} --filters Name=tag:Name,Values=${env.INSTANCE_NAME} --query 'Reservations[0].Instances[0].InstanceId' --output text", returnStdout: true).trim()
 
                     // terraform destroy with instance ID
                     sh "terraform destroy -target=aws_instance.example -var 'instance_id=${instanceId}' -auto-approve"
